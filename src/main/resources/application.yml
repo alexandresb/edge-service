@@ -1,0 +1,114 @@
+server:
+  port: 9000
+  netty:
+    connection-timeout: 2s
+    idle-timeout: 15s
+  shutdown: graceful
+
+spring:
+  application:
+    name: edge-service
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  config:
+    #importation / récup des propriétés de config depuis un serveur de config quand il y en a 1 de dispo
+    import: "optional:configserver:"
+  cloud:
+    gateway:
+      routes:
+        - id: catalog-route
+          predicates:
+            - Path=/books/**
+          uri: ${CATALOG_SERVICE_URL:http://localhost:9001}/books
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: catalogCircuitBreaker
+                fallBackUri: forward:/catalog-fallback
+        - id: order-route
+          predicates:
+            - Path=/orders/**
+          uri: ${ORDER_SERVICE_URL:http://localhost:9002}/orders
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker
+                #pas d'URI de fallback
+      httpclient:
+        connect-timeout: 2000 #temps max en ms pour qu'une connexion soit établi avec un service aval
+        response-timeout: 5s #temps max pour obtenir une réponse du service aval
+        pool:
+          type: elastic
+          max-idle-time: 15s #durée de vie max d'une connexion non utilisée dans le pool
+          max-life-time: 60s #durée de vie max d'une connexion dans le pool
+      default-filters:
+        - name: SaveSession
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenishRate: 10 #10 jetons ajoutés par seconde
+              burstCapacity: 20 #Capacité maximale du seau (20 jetons au total)
+              requestedTokens: 1 #Chaque requête consomme 1 jeton.
+        - name: Retry
+          args:
+            retries: 3
+            methods: GET
+            series: SERVER_ERROR
+            exceptions: java.io.IOException,java.util.concurrent.TimeoutException
+            backoff:
+              firstBackOff: 50ms
+              maxBackOff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+    config:
+      uri: http://localhost:8888 #URI par défaut
+      #resilience du client de config
+      request-connect-timeout: 5000 #en ms - temps max pour établir une cnx avec le config server
+      request-read-timeout: 5000 #temps max pour que le container lise la config pour configurer le(s) bean(s)
+      fail-fast: false #true pour que le retry soit mis en oeuvre pour recontacter le config server
+      retry:
+        #utilisation des vals par défaut
+        max-attempts: 20 #j'ai mis 20 au lieu de 6 (val par défaut) pour tester le retry
+        initial-interval: 1000 # en ms. interval de temps écoulé avant la 1ere nouvelle tentative (retry)
+        max-interval: 2000 #interval max pour une tentative - délai à ne pas excéder
+        multiplier: 1.1 # facteur pour calculer le délai qui doit s'écouler avant la tentative suivante
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      connect-timeout: 2s
+      timeout: 1s
+  session:
+    timeout: 10m # durée de vie de la session utilisateur (conservation des données de session)
+    redis:
+      namespace: polar:edge # toutes les données de session sauvegardées dans Redis seront préfixés avec ce ns
+resilience4j:
+  circuitbreaker:
+    configs:
+      default: #en coulisse configuration d'un Bean Default mettant en œuvre le CB pour les 2 routes
+        minimumNumberOfCalls: 10 # nombre d'appel à atteindre pour que le CB démarre le calcul du taux d'erreur
+        slidingWindowSize: 20 # Plage d'appel observé par le CB. Ici prise en compte des 20 derniers appels
+        failureRateThreshold: 50 #Si 50% d'erreur d'appel dans la fenêtre le circuit est / ou repasse en ouvert
+        waitDurationInOpenState: 15000 #après 15 sec le circuit pourra passer en half open
+        permittedNumberOfCallsInHalfOpenState: 5 # 5 appels autorisés dans l'état half-open
+        registerHealthIndicator: true # pour obtenir les métriques du circuit breaker
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s # "écrase" le timeout défini par spring.cloud.gateway.httpclient.response-timeout
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    io.github.resilience4j: DEBUG
+#ajout pour exposer les métriques du circuit breaker au niveau de l'actuator health
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true

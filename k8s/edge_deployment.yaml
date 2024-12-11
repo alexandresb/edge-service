@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-service
+  labels:
+    app: edge-service
+#Etat désirée pour l'application stateless catalog-service. Deployment spécifie la création d'un seul pod pour catalog-service
+spec:
+  replicas: 1 #Par défaut 1 - donc optionnel si 1 seul pod désiré.
+  #Indication du label permettant de déterminer le pod à "répliquer". Doit correspondre à un label indiqué dans template
+  selector:
+    matchLabels:
+      app: edge-service
+  template:
+    metadata:
+      name: edge-service #nom du pod
+      #déclaration du label permettant d'identifier le pod (doit correspondre à matchLabels ci-dessus)
+      labels:
+        app: edge-service
+    spec:
+      containers:
+        - name: edge-service
+          image: edge-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          # var d'env de configuration de catalog-service lors de son démarrage
+          env:
+            - name: BPL_JVM_THREAD_COUNT # configure le nombre de threads que la JVM peut créer au sein d'un container d'image BuildPacks
+              value: "50"
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: http://config-service
+            - name: CATALOG_SERVICE_URL
+              value: http://catalog-service
+            - name: ORDER_SERVICE_URL
+              value: http://order-service
+            - name: SPRING_DATA_REDIS_HOST
+              value: polar-redis
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "sh", "-c", "sleep 5" ]
+      
