@@ -9,7 +9,7 @@ custom_build(
 )
 
 # déploiement dans K8s
-k8s_yaml(['k8s/edge_deployment.yaml', 'k8s/edge_service.yaml'])
+k8s_yaml(['k8s/edge_deployment.yaml', 'k8s/edge_service.yaml', 'k8s/edge_ingress.yaml'])
 
 # port-forwarding
 k8s_resource('edge-service', port_forwards=['9000'])
