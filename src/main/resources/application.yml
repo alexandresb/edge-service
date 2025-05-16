@@ -34,6 +34,11 @@ spring:
               args:
                 name: orderCircuitBreaker
                 #pas d'URI de fallback
+        #route pour accéder à la SPA Angular
+        - id: spa-route
+          predicates:
+            - Path=/,/*.css, /*.js,/favicon.ico
+          uri: ${SPA_URL:http://localhost:9004}
       httpclient:
         connect-timeout: 2000 #temps max en ms pour qu'une connexion soit établi avec un service aval
         response-timeout: 5s #temps max pour obtenir une réponse du service aval
@@ -42,7 +47,7 @@ spring:
           max-idle-time: 15s #durée de vie max d'une connexion non utilisée dans le pool
           max-life-time: 60s #durée de vie max d'une connexion dans le pool
       default-filters:
-        - name: SaveSession
+        - SaveSession
         - name: RequestRateLimiter
           args:
             redis-rate-limiter:
@@ -82,6 +87,18 @@ spring:
     timeout: 10m # durée de vie de la session utilisateur (conservation des données de session)
     redis:
       namespace: polar:edge # toutes les données de session sauvegardées dans Redis seront préfixés avec ce ns
+  security:
+    oauth2:
+      client:
+        registration:
+          #configuration de ClientRegistration représentant un client enregistré dans un serveur d'autorisation.
+          keycloak: #(registrationId)  id unique pour identifier l'instance ClientRegistration  -> donc adresse de redirection après login : login/oauth2/code/keycloak
+            client-id: edge-service #identifiant dans le realm Keycloak
+            client-secret: polar-keycloak-secret
+            scope: openid #permet d'obtenir l'ID token contenant les infos de l'utilisateur authentifié
+        provider:
+          keycloak: #le nom du client registration dans Spring Security défini ci-dessus
+            issuer-uri: http://localhost:8080/realms/PolarBookshop
 resilience4j:
   circuitbreaker:
     configs:
