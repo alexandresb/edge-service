@@ -5,9 +5,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint;
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
@@ -19,7 +22,14 @@ import reactor.core.publisher.Mono;
 
 //le package org.springframework.web.server contient les classes et interfaces pour configurer la sécurité via la prog reéactive
 @Configuration(proxyBeanMethods = false)
+//@EnableWebFluxSecurity
 public class SecurityConfig {
+
+    @Bean
+    ServerOAuth2AuthorizedClientRepository oAuth2AuthorizedClientRepository() {
+        //bean stockant le contenu de l'objet OAuth2AuthorizedClient (l'access Token) dans la session utilisateur Redis
+        return new WebSessionServerOAuth2AuthorizedClientRepository();
+    }
 
     //Sans configuration explicite, Spring Boot active l'authentification par formulaire et basique
     //définition du bean reactif SecurityWebFilterChain

@@ -18,7 +18,7 @@ public class UserController {
         var user = new User(oidcUser.getPreferredUsername(),
                 oidcUser.getGivenName(),
                 oidcUser.getFamilyName(),
-                List.of("employee","customer"));//liste statique
+                oidcUser.getClaimAsStringList("roles"));//récup des rôles depuls la claim roles intégrée à l'id token
         return Mono.just(user);
     }
 }

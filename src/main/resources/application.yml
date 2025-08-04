@@ -48,6 +48,7 @@ spring:
           max-life-time: 60s #durée de vie max d'une connexion dans le pool
       default-filters:
         - SaveSession
+        - TokenRelay
         - name: RequestRateLimiter
           args:
             redis-rate-limiter:
@@ -95,7 +96,7 @@ spring:
           keycloak: #(registrationId)  id unique pour identifier l'instance ClientRegistration  -> donc adresse de redirection après login : login/oauth2/code/keycloak
             client-id: edge-service #identifiant dans le realm Keycloak
             client-secret: polar-keycloak-secret
-            scope: openid #permet d'obtenir l'ID token contenant les infos de l'utilisateur authentifié
+            scope: openid,roles #le scope role permet de récuperer les rôles de l'utilisateur authentifié
         provider:
           keycloak: #le nom du client registration dans Spring Security défini ci-dessus
             issuer-uri: http://localhost:8080/realms/PolarBookshop
