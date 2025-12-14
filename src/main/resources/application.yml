@@ -114,19 +114,44 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s # "écrase" le timeout défini par spring.cloud.gateway.httpclient.response-timeout
+#groupement des loggers sous le nom circuitbreaker pour appliquer à l'ensemble le niveau info
 logging:
+  group:
+    circuitbreaker: org.springframework.cloud.gateway, io.github.resilience4j
   level:
-    org.springframework.cloud.gateway: DEBUG
-    io.github.resilience4j: DEBUG
-#ajout pour exposer les métriques du circuit breaker au niveau de l'actuator health
+    circuitbreaker: info
+  pattern:
+    level: "%5p [${spring.application.name},%X{trace_id},%X{span_id}]"
+
+info:
+  system: Polar Bookshop
+
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health, prometheus, info, heapdump
   endpoint:
     health:
       show-details: always
-  health:
-    circuitbreakers:
+      show-components: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState, redis
+ #le contributeur de santé du circuit breaker est activé par défaut si resilience4j dans le classpath donc configuration supprimable
+  #health:
+    #circuitbreakers:
+      #enabled: true
+  #tag des métriques exposées avec une clé/valeur application=nom app
+  metrics:
+    tags:
+      applications: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+    os:
+      enabled: true
+    java:
       enabled: true
