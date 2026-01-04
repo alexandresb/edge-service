@@ -54,3 +54,10 @@ spec:
               path: /actuator/health/readiness
             initialDelaySeconds: 10
             periodSeconds: 15
+          volumeMounts:
+            - mountPath: /workspace/config
+              name: edge-config-volume
+      volumes:
+        - name: edge-config-volume
+          configMap:
+            name: edge-config
